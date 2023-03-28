@@ -4,86 +4,40 @@ from bs4 import BeautifulSoup
 from bs4.element import Tag as Bs4Tag
 from decimal import Decimal, getcontext
 import copy
+import argparse
 
 
-space2cryst = {"triclinic":{"P1", "P-1"},
-			   "monoclinic":{"Cc", "C2/c", "C2", "Cm", "C2/m", 
-							 "P21/c", "Pc", "P2/c", "P21", "P21/m", 
-							 "P2", "Pm", "P2/m"},
-			   "orthorhombic":{"Fddd", "Fdd2", "F222", "Fmm2", "Fmmm", 
-							   "Ccca", "Ibca", "Ccc2", "Cccm", "Iba2", 
-							   "Ibam", "Aba2", "Cmca", "Ima2", "Imma", 
-							   "Cmc21", "Ama2", "Cmcm", "Abm2", "Cmma", 
-							   "C2221", "I222", "I212121", "Imm2", "Immm", 
-							   "C222", "Cmm2", "Amm2", "Cmmm", "Pnna", 
-							   "Pccn", "Pbcn", "Pbca", "Pnnn", "Pcca", 
-							   "Pban", "Pna21", "Pnma", "Pnn2", "Pnnm", 
-							   "Pba2", "Pbam", "Pnc2", "Pmna", "Pca21", 
-							   "Pbcm", "Pcc2", "Pccm", "Pmn21", "Pmmn", 
-							   "Pmc21", "Pma2", "Pmma", "P212121", "P21212", 
-							   "P2221", "P222", "Pmm2", "Pmmm"},
-			   "tetragonal":{"I41/acd", "I41cd", "I41/amd", "I41md", "I-42d", 
-							 "I4cm", "I-4c2", "I4/mcm", "I41/a", "I41", "I4122", 
-							 "I4", "I-4", "I4/m", "I422", "I4mm", "I-4m2", 
-							 "I-42m", "I4/mmm", "P4/ncc", "P4/nnc", "P42/nbc", 
-							 "P4cc", "P 4/mcc", "P4nc", "P 4/mnc", "P42bc",
-							 "P 42/mbc", "P42/nmc", "P42/ncm", "P42/nnm", 
-							 "P4/nbm", "P-421c", "P42mc", "P-42c", "P42/mmc", 
-							 "P42nm", "P-4n2", "P42/mnm", "P42cm", "P-4c2", 
-							 "P42/mcm", "P4bm", "P-4b2", "P4/mbm", "P42/n", 
-							 "P4/n", "P4/nmm", "P41212", "P43212", "P42212", 
-							 "P41", "P43", "P4122", "P4322", "P42", "P 42/m", 
-							 "P4222", "P4212", "P-421m", "P4", "P-4", "P4/m", 
-							 "P422", "P4mm", "P-42m", "P-4m2", "P4/mmm"},
-			   "hexagonal":{"P6cc", "P6/mcc", "P63mc", "P-62c", "P63/mmc",
-							"P63cm", "P-6c2", "P63/mcm", "P61", "P65", "P6122",
-							"P6522", "P62", "P64", "P6222", "P6422", "P63", 
-							"P63/m", "P6322", "P6", "P-6", "P6/m", "P622", 
-							"P6mm", "P-6m2", "P-62m", "P6/mmm",
-							"P31c", "P-31c", "P3c1", "P-3c1", "P31", "P32", 
-							"P3112", "P3121", "P3212", "P3221", "P3", "P-3", 
-							"P312", "P321", "P3m1", "P31m", "P-31m", "P-3m1"},
-			   "cubic":{"Fd-3c", "F-43c", "Fm-3c", "Fd-3", "Fd-3m", 
-						"F4132", "F23", "Fm-3", "F432", "F-43m", 
-						"Fm-3m", "Ia-3d", "I-43d", "Ia-3", "I4132", 
-						"I23", "I213", "Im-3", "I432", "I-43m", 
-						"Im-3m", "Pn-3n", "P-43n", "Pm-3n", "Pn-3", 
-						"Pn-3m", "Pa-3", "P4332", "P4132", "P213", 
-						"P4232", "P23", "Pm-3", "P432", "P-43m", "Pm-3m"},
-			   "rhombohedral":{"R3c", "R-3c", "R3", "R-3", "R32", "R3m", "R-3m"}}
-
-
-
-def html_parser(path,parser='html.parser'):
+def html_parser(path):
 
 	'''Opens the template.htm and returns it as a bs4 Object'''
 
 	with open(path,'r') as inf:
-		soup = BeautifulSoup(inf,features=parser)
+		soup = BeautifulSoup(inf,'html.parser')
 	
 	return soup
 
 
-def get_formatted_space_group(spacegroup,soup):
 
-	'''Finds the formatted space group inside space groups.htm and replaces the 
-	unformatted one in the found data.'''
+def make_space2cryst_dict(soup):
 
-	for tr in soup.findAll('tr'):
+	'''Creates the space2cryst dict from a bs4 soup object.'''
+	space2cryst = {}
+
+	for tr in soup.findAll('tr')[1:]:
 		tds = tr.findAll('td')
-		if tds[0].text.strip() == spacegroup:
-			# inner_html = ''.join([str(ele) for ele in tds[1].p.contents])
-			# formatted = BeautifulSoup(inner_html,'html.parser') 
-			formatted = tds[1].p.contents
-			return formatted
+		keys = tds[0].text.strip().split(';')
+		formatted = tds[1].p.contents
+		system = tds[2].text.strip()
 
-	print('NO FORMATTED SPACE GROUP COULD BE FOUND IN "space groups.htm".')
+		for key in keys:
+			space2cryst[key.lower()] = (formatted,system)
 
-
-
+	return space2cryst
 
 
-def cryst_round(mean_err):
+
+
+def cryst_round(parm,mean_err):
 	'''
 	DESCRIPTION: This function preforms crystallographic rounding on a string that contains two floats 
 	separated by the substring "`_".
@@ -92,13 +46,18 @@ def cryst_round(mean_err):
 	# set precision ridiculously high
 	getcontext().prec = 32
 
-	if '`_' not in mean_err:
-		if re.search(r'\d+\.\d+',mean_err): 
+	if '_' not in mean_err:
+		if re.search(r'\d+\.\d+',mean_err) and parm in ['chi','rwp','rexp']: 
 			return '{:.2f}'.format(Decimal(mean_err))
 		else:
 			return mean_err
 
-	mean, error = mean_err.split('`_')
+	if 'LIMIT_MAX' in mean_err or 'LIMIT_MIN' in mean_err:
+		return 
+	elif '`_' in mean_err:
+		mean, error = mean_err.split('`_')
+	elif '_' in mean_err:
+		mean, error = mean_err.split('_')
 	
 	mean  = Decimal(mean)
 	error = Decimal(error)
@@ -142,45 +101,66 @@ def cryst_round(mean_err):
 	return '%s(%s)'%(mean_round,bracket)
 
 
-def handle_alt_notations(data,raw):
 
-	'''Sometimes the parameters are written in an alternative notation which uses the name of the
-	bravais lattice without letters to identify different parameters.'''
 
-	# THIS MIGHT NEED IMPROVEMENT IF VALUES WITHOUT ERRORS OCCUR!!!
-	V = re.search(r'volume\s+(\d+.\d+`_\d+.\d+)',raw).group(1)
-	data['volume'] = V
+def find_space_group(raw,data):
 
-	if re.search(r'Cubic\(@\s+(\d+.\d+`_\d+.\d+)\)',raw):
-		a = re.search(r'Cubic\(@\s+(\d+.\d+`_\d+.\d+)\)',raw).group(1)
-		data['a'] = a; data['b'] = a; data['c'] = a; data['al'] = '90'; data['be'] = '90'; data['ga'] = '90'
-	elif re.search(r'Hexagonal\(@\s+(\d+.\d+`_\d+.\d+),\s+@\s+(\d+.\d+`_\d+.\d+)\)',raw):
-		a,c = re.search(r'Hexagonal\(@\s+(\d+.\d+`_\d+.\d+),\s+@\s+(\d+.\d+`_\d+.\d+)\)',raw).group(1,2)
-		data['a'] = a; data['b'] = a; data['c'] = c; data['al'] = '90'; data['be'] = '90'; data['ga'] = '120'
-	elif re.search(r'Rhombohedral\(@\s+(\d+.\d+`_\d+.\d+),@\s+(\d+.\d+`_\d+.\d+)\)',raw):
-		a,ga = re.search(r'Rhombohedral\(@\s+(\d+.\d+`_\d+.\d+),@\s+(\d+.\d+`_\d+.\d+)\)',raw).group(1,2)
-		data['a'] = a; data['b'] = a; data['c'] = a; data['al'] = '90'; data['be'] = '90'; data['ga'] = ga
-	elif re.search(r'Tetragonal\(@\s+(\d+.\d+`_\d+.\d+),@\s+(\d+.\d+`_\d+.\d+)\)',raw):
-		a,c = re.search(r'Tetragonal\(@\s+(\d+.\d+`_\d+.\d+),@\s+(\d+.\d+`_\d+.\d+)\)',raw).group(1,2)
-		data['a'] = a; data['b'] = a; data['c'] = c; data['al'] = '90'; data['be'] = '90'; data['ga'] = '90'
+	'''Finds the space group in outfile (str). If not found, add "Not found" to data dict.'''
+
+	rexes = [r'space_group\s+"*([\w\d/-]+)"*'] # Error index 3 in backs.log
+
+	for rex in rexes:
+		match = re.search(rex,raw)
+		if match:
+			data['space_group'] = match.group(1)
+			break
+		else:
+			pass
+
+	try:
+		data['space_group']
+	except KeyError:
+		data['space_group'] = 'Not found'
+		print('The space group could not be found in the .out file!!!: %s'%data['filename'])
 
 	return data
-	# others to be implemented if testing shows that it's necessary.
 
 
 
-############ new code 
-def get_data(path):
 
-	'''Finds all the available data in a TOPAS output file.'''
 
-	fix_angles = {'triclinic':{},
-				  'monoclinic':{'al':'90','ga':'90'},
-				  'orthorhombic':{'al':'90','be':'90','ga':'90'},
-				  'tetragonal':{'al':'90','be':'90','ga':'90'},
-				  'hexagonal':{'al':'90','be':'90','ga':'120'},
-				  'cubic':{'al':'90','be':'90','ga':'90'},
-				  'rhombohedral':{'al':'90','be':'90'}}
+def find_volume(raw,data):
+
+	'''Finds the volume in the .out file (str) If none found, adds "Not found".'''
+
+	rexes = [r'volume\s+(\d+\.\d+`_\d+\.\d+)',
+			 r'volume\s+(\d+\.\d+)`*',
+			 r'cell_volume\s+(\d+\.\d+`_\d+\.\d+)',
+			 r'cell_volume\s+(\d+\.\d+)`*'] # Error index 3 in backs.log
+
+	for rex in rexes: # iterate over patterns and break at first match
+		match = re.search(rex,raw)
+		if match:
+			data['volume'] = match.group(1)
+			break
+		else:
+			pass # move on to next pattern
+
+	try:
+		data['volume']
+	except KeyError:
+		data['volume'] = 'Not found'
+		# print('The volume could not be found in the .out file!!!')
+		# print('In rare cases, this is because there simply is no volume.')
+		# print('More likely, however, none of the regexes (rex) in the list of regexes (rexes), can match the pattern of the volume inside the .out file.')
+
+	return data
+
+
+def complete_lengths(raw,data,crystal_system,found):
+
+	'''Completes the lengths based on the crystal system, if possible.
+	If the number of lengths is still smaller than 3, print out error and add "Not found" to data for those lengths.'''
 
 	equal_lengths = {'triclinic':{'a':0,'b':0,'c':0},
 					 'monoclinic':{'a':0,'b':0,'c':0},
@@ -190,92 +170,231 @@ def get_data(path):
 					 'cubic':{'a':1,'b':1,'c':1},
 					 'rhombohedral':{'a':1,'b':1,'c':1}}
 
-	angles = ['al','be','ga']
-	lengths = ['a','b','c']
+	equals = equal_lengths[crystal_system]
+	a = data['a']
 
-	param_rexes = [r'%s\s+@*\s+(\d+.\d+`_\d+.\d+)',r'%s\s+@*\s+(\d+.\d+)`',r'%s\s+@*\s+(\d+.\d+)',r'%s\s+@*\s*(\d+.*)']
+	for length in equals.keys():
+		if equals[length] == 1:
+			data[length] = a
+			if length not in found:
+				found.append(length)
 
-	with open(path,'r',encoding='utf8') as inf:
-		raw = inf.read()
+	if len(found) == 3:
+		pass
+	else:
+		for length in ['a','b','c']:
+			if length not in found:
+				data[length] = 'Not found'
+		print('Not alt notation, yet not all parameters found. This is weird.')
+		print('Make a bug report at: "https://github.com/p3rAsperaAdAstra/TOPAS-Param-Tables-public-"')
 
-	data = {}
 
-	space_group = re.search(r'space_group\s+"*([\w\d/-]+)"*',raw).group(1) # find space group first 
-	crystal = [key for key in space2cryst if space_group in space2cryst[key]][0] # determine crystal system from it using inverse space2cryst
+	return data
+	
 
-	data['space_group'] = space_group
-	data['crystal_system'] = crystal
 
-	# find rwp, rexp and gof
-	rwp = re.search(r'r_wp\s+(\d+[.]\d+)',raw).group(1)
-	rexp = re.search(r'r_exp\s+(\d+[.]\d+)',raw).group(1)
-	chi = re.search(r'gof\s+(\d+[.]\d+)',raw).group(1)
 
-	# find cell volume
-	for rex in param_rexes:
-		rex = rex%'cell_volume'
-		match = re.search(rex,raw)
+def complete_angles(raw,data,crystal_system,found):
+
+	'''Completes the lengths based on the crystal system, if possible.
+	If the number of lengths is still smaller than 3, print out error and add "Not found" to data for those lengths.'''
+
+	fix_angles = {'triclinic':{},
+				  'monoclinic':{'al':'90','ga':'90'},
+				  'orthorhombic':{'al':'90','be':'90','ga':'90'},
+				  'tetragonal':{'al':'90','be':'90','ga':'90'},
+				  'hexagonal':{'al':'90','be':'90','ga':'120'},
+				  'cubic':{'al':'90','be':'90','ga':'90'},
+				  'rhombohedral':{'al':'90','be':'90'}}
+
+	givens = fix_angles[crystal_system]
+
+	for angle in givens.keys():
+		data[angle] = givens[angle]
+		if angle not in found:
+			found.append(angle)
+
+	if len(found) == 3:
+		pass
+	else:
+		for angle in ['al','be','ga']:
+			if angle not in found:
+				data[angle] = 'Not found'
+
+	return data
+
+
+
+
+
+def find_alt_parms(raw,data):
+
+	'''If the number of lengths found by find_lengths() is equal to zero, a search for the alternative notation
+	of TOPAS .out files is executed. If the number of lengths is still zero after this, print out error and add 
+	"Not found" to data for those lengths.'''
+
+
+	rexes = [r'([a-zA-Z]+)\(\s*@*\s*(\d+\.\d+`*_\d+.\d+)[a-zA-Z_]*\d*\.*\d*,\s*@*\s*(\d+\.\d+`*_\d+\.\d+)[a-zA-Z_]*\d*\.*\d*',
+			 r'([a-zA-Z]+)\(\s*@*\s*(\d+\.\d+`*_\d+\.\d+)[a-zA-Z_]*\d*\.*\d*,\s*@*\s*(\d+\.\d+)[a-zA-Z_]*\d*\.*\d*`*',
+			 r'([a-zA-Z]+)\(\s*@*\s*(\d+\.\d+`*_\d+\.\d+)[a-zA-Z_]*\d*\.*\d*,\s*@*\s*(\d+\.\d+)[a-zA-Z_]*\d*\.*\d*`*',
+			 r'([a-zA-Z]+)\(\s*@*\s*(\d+\.\d+)[a-zA-Z_]*\d*\.*\d*`*,\s*@*\s*(\d+\.\d+)[a-zA-Z_]*\d*\.*\d*`*',
+			 r'([a-zA-Z]+)\(\s*@*\s*(\d+.\d+`*_\d+.\d+)[a-zA-Z_]*\d*\.*\d*',
+			 r'([a-zA-Z]+)\(\s*@*\s*(\d+.\d+)[a-zA-Z_]*\d*\.*\d*`*\s*']
+
+	for rex in rexes:
+		match = match = re.search(rex,raw)
 		if match:
-			data['volume'] = match.group(1)
+			sys = match.group(1)
 			break
 
-	volume = re.search(r'gof\s+(\d+[.]\d+)',raw).group(1)
+	if sys:
+		if sys == 'Cubic':
+			a = match.group(2) 
+			data['a'] = a; data['b'] = a; data['c'] = a; data['al'] = '90'; data['be'] = '90'; data['ga'] = '90'
+		elif sys == 'Hexagonal':
+			a,c = match.group(2,3)
+			data['a'] = a; data['b'] = a; data['c'] = c; data['al'] = '90'; data['be'] = '90'; data['ga'] = '120'
+		elif sys == 'Rhombohedral':
+			a,ga = match.group(2,3)
+			data['a'] = a; data['b'] = a; data['c'] = a; data['al'] = '90'; data['be'] = '90'; data['ga'] = ga
+		elif sys == 'Tetragonal':
+			a,c = match.group(2,3)
+			data['a'] = a; data['b'] = a; data['c'] = c; data['al'] = '90'; data['be'] = '90'; data['ga'] = '90'
+		elif sys == 'Monoclinic':
+			print('%s alt notation not implemented. format first encountered'%sys)
+		elif sys == 'Triclinic':
+			print('%s alt notation not implemented. format first encountered'%sys)
+		elif sys == 'Trigonal':
+			print('%s alt notation not implemented. format first encountered'%sys)
+				
+	else:
+		print('No alt notation found.')
+
+
+	parms = ['a','b','c','al','be','ga']
+
+	for par in parms:
+		if par not in data.keys():
+			data[par] = 'Not found'
+			print('Could not find %s in find_alt_parms(). FILE: %s'%(par,data['filename']))
+
+	return data
+
+
+
+
+def find_lengths(raw,data,crystal_system):
+
+	'''Finds the lengths a,b,c in outfile (str). If not found, add "Not found" to data dict.
+	Calls complete_lengths() to check if can be derived from crystal system.'''
+
+	rexes = [r'%s\s+@*\s*(\d+\.\d+`*_\d+\.\d+)[a-zA-Z_]*\d*\.*\d*',
+			 r'%s\s+@*\s*(\d+\.\d+)`*_[a-zA-Z_]*\d*\.*\d*',
+			 r'%s\s+@*\s*(\d+\.\d+)`',
+			 r'%s\s+@*\s*(\d+\.\d+)`*'] # might need to be modified later.
+
+	lengths = ['a','b','c'] # lengths to be searched for
+	found = [] # append found lengths so that they can be skipped
+
+	for rex in rexes: # iterate over patterns and break at first match
+		for length in lengths:
+			if length in found:
+				pass
+			else:
+				match = re.search(rex%length,raw)
+				if match:
+					data[length] = match.group(1)
+					found.append(length)
+				else:
+					pass
+
+
+	if len(found) == 3: # all lengths found
+		pass
+	elif 1 < len(found) < 3: # call complete_lengths()
+		data = complete_lengths(raw,data,crystal_system,found)
+	elif len(found) == 0: # call find_alt_lengths()
+		data = find_alt_parms(raw,data)
+	
+	return data
+
+
+def find_angles(raw,data,crystal_system):
+
+	'''Finds the lengths a,b,c in outfile (str). If not found, add "Not found" to data dict.
+	Calls complete_lengths() to check if can be derived from crystal system.'''
+
+	rexes = [r'\s+%s\s*@*\s*(\d+.\d+`*_\d+.\d+)',
+			 r'\s+%s\s*@*\s*(\d+.\d+)`*',
+			 r'\s+%s\s*@*\s*(\d+)[^:]',] # might need to be modified later.
+
+	angles = ['al','be','ga'] # lengths to be searched for
+	found = [] # append found lengths so that they can be skipped
+
+	for rex in rexes: # iterate over patterns and break at first match
+		for angle in angles:
+			if angle in found:
+				pass
+			else:
+				match = re.search(rex%angle,raw)
+				if match:
+					data[angle] = match.group(1)
+					found.append(angle)
+				else:
+					pass
+
+
+	if len(found) == 3: # all lengths found
+		pass
+	elif 1 < len(found) < 3: # call complete_angles()
+		data = complete_angles(raw,data,crystal_system,found)
+	elif len(found) == 0: # call find_alt_angles()
+		data = find_alt_parms(raw,data)
+	
+	return data
+
+
+############ new code 
+def get_data(path,data):
+
+	'''Finds all the available data in a TOPAS output file.'''
+
+	with open(path,'r',encoding='utf8',errors='ignore') as inf:
+		raw = inf.read()
+
+	data = find_space_group(raw,data) # find space group first
+	try:
+		data['crystal_system'] = space2cryst[data['space_group']][1] # now based on new and improved space2cryst
+	except KeyError:
+		data['crystal_system'] = space2cryst[data['space_group'].lower()][1] # now based on new and improved space2cryst
+	data = find_volume(raw,data) # find volume of ??unit cell??
+
+	data = find_lengths(raw,data,data['crystal_system']) # find lengths
+	data = find_angles(raw,data,data['crystal_system']) # find angles
+	
+	# find rwp, rexp and gof (these should be easy)
+	rwp = re.search(r'r_wp\s+(\d+\.*\d*)',raw).group(1)
+	rexp = re.search(r'r_exp\s+(\d+\.*\d*)',raw).group(1)
+	chi = re.search(r'gof\s+(\d+\.*\d*)',raw).group(1)
 
 	data['rwp'] = rwp
 	data['rexp'] = rexp
 	data['chi'] = chi
 
-	# find angles
-	given_angles = fix_angles[crystal]
-	equiv_lengths = equal_lengths[crystal]
+	parms = ['a','b','c','al','be','ga','space_group','crystal_system','chi','rwp','rexp','volume']
+	for par in parms:
+		if par not in data.keys():
+			data[par] = 'Not found'
 
-	for angle in angles:
-		if angle in given_angles.keys():
-			data[angle] = given_angles[angle]
-		else:
-			for rex in param_rexes:
-				rex = rex%angle
-				match = re.search(rex,raw)
-				if match:
-					data[angle] = match.group(1)
-					break
-
-	skip = []
-	for length in lengths:
-		if length in skip:
-			pass
-		else:
-			for rex in param_rexes:
-				rex = rex%length
-				match = re.search(rex,raw)
-				if match:
-					data[length] = match.group(1)
-					if equiv_lengths[length] == 1:
-						equals = [key for key in equiv_lengths if equiv_lengths[key] == 1]
-						skip += equals
-						for key in equals: data[key] = match.group(1)
-					break
+	return data
 	
-	if len(data.keys()) == 12:
-		return data
-	else:
-		# Implement edge cases for different types of crystal systems like Cubic(@ 15.517450`_0.003075)
-		params = handle_alt_notations(data,raw)
-		for par in params.keys():
-			if par not in data.keys():
-				data[par] = params[par]
 
-		if len(data.keys()) == 12:
-			return data
-		else:
-			print('Still not finding all values.')
-	
 
 def write_soup(soup,path='check.htm'):
 
 	'''Write a temporary soup so it can be displayed in the browser and checked.'''
 
-	with open(path,'w',encoding='utf8') as outf:
+	with open(path,'w',encoding='utf-8') as outf:
 		outf.write(str(soup))
 
 
@@ -311,13 +430,13 @@ def make_new_column(template,outsoup,params):
 		key = template2data[row_name]
 		val = params[key]
 
-		if key in ['a','b','c','al','be','ga','volume','rwp','rexp','chi']:
-			val = cryst_round(val)
+		if key in ['a','b','c','al','be','ga','volume','rwp','rexp','chi'] and key != 'Not found':
+			val = cryst_round(key,val)
 
 		new_td = copy.copy(td_template)
 
-		if key == 'space_group': # get formatted space group from "space groups.htm"
-			formatted = get_formatted_space_group(val,formatted_spacegroups)
+		if key == 'space_group' and val != 'Not found': # get formatted space group from "space groups.htm"
+			formatted = space2cryst[data['space_group'].lower()][0]
 			new_td.span.contents = formatted
 		else:
 			new_td.span.string = val
@@ -332,20 +451,31 @@ def make_new_column(template,outsoup,params):
 # Main Loop
 input_files = glob('*.out')
 
-template = html_parser('template.htm')
+resource = html_parser('resource.htm')
+template = copy.copy(resource)
+template.findAll('table')[-1].decompose() # remove space2cryst from template copy
+for p in template.findAll('p')[-2:]: p.decompose() # remove two weird p tags that somehow appear when writing to file
 outsoup = copy.copy(template)
-formatted_spacegroups = html_parser('space groups.htm')
+for tr in outsoup.findAll('tr'): tr.findAll('td')[-1].decompose() # remove blank column. Change later if useful. 
+space2cryst = resource.findAll('table')[-1]
 
+# create space2cryst dict from soup
+space2cryst = make_space2cryst_dict(space2cryst)
 
-for tr in outsoup.findAll('tr'):
-	tr.findAll('td')[-1].decompose()
-
-
-# write_soup(outsoup,'outsoup.htm')
-for file in input_files:
-	params = get_data(file) # this should work now. add more rex to param_rexes if doesn't work.
-	params['filename'] = file
-	outsoup = make_new_column(template,outsoup,params)
+for i,file in enumerate(input_files):
+	# if i < 2100: continue
+	data = {}
+	data['filename'] = file
+	print('%s/%s'%(i,len(input_files)))
+	print(file)
+	data = get_data(file,data)
+	outsoup = make_new_column(template,outsoup,data)
+	# if i > 4:
+	# 	break
 	
-
 write_soup(outsoup,'done.htm')
+
+
+#### Find old space2cryst and add to resource.htm
+
+# finds axial instead of alpha. need to fix.
