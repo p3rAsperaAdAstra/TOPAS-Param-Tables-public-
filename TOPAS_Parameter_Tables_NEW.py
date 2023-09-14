@@ -11,8 +11,8 @@ def html_parser(path):
 
 	'''Opens the template.htm and returns it as a bs4 Object'''
 
-	with open(path,'r') as inf:
-		soup = BeautifulSoup(inf,'html.parser')
+	with open(path,'rb') as inf:
+		soup = BeautifulSoup(inf)
 	
 	return soup
 
