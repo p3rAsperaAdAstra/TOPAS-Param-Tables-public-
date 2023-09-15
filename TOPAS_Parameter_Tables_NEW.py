@@ -251,21 +251,27 @@ def find_alt_parms(raw,data):
 		if sys == 'Cubic':
 			a = match.group(2) 
 			data['a'] = a; data['b'] = a; data['c'] = a; data['al'] = '90'; data['be'] = '90'; data['ga'] = '90'
+			data['crystal_system'] = 'cubic'
 		elif sys == 'Hexagonal':
 			a,c = match.group(2,3)
 			data['a'] = a; data['b'] = a; data['c'] = c; data['al'] = '90'; data['be'] = '90'; data['ga'] = '120'
+			data['crystal_system'] = 'hexagonal'
 		elif sys == 'Rhombohedral':
 			a,ga = match.group(2,3)
 			data['a'] = a; data['b'] = a; data['c'] = a; data['al'] = '90'; data['be'] = '90'; data['ga'] = ga
+			data['crystal_system'] = 'rhombohedral'
 		elif sys == 'Tetragonal':
 			a,c = match.group(2,3)
 			data['a'] = a; data['b'] = a; data['c'] = c; data['al'] = '90'; data['be'] = '90'; data['ga'] = '90'
+			data['crystal_system'] = 'tetragonal'
 		elif sys == 'Monoclinic':
 			print('%s alt notation not implemented. format first encountered'%sys)
 		elif sys == 'Triclinic':
 			print('%s alt notation not implemented. format first encountered'%sys)
 		elif sys == 'Trigonal':
-			print('%s alt notation not implemented. format first encountered'%sys)
+			a,c = match.group(2,3)
+			data['a'] = a; data['b'] = a; data['c'] = c; data['al'] = '90'; data['be'] = '90'; data['ga'] = '120'
+			data['crystal_system'] = 'trigonal'
 				
 	else:
 		print('No alt notation found.')
