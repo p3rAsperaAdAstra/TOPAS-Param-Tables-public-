@@ -12,7 +12,7 @@ def html_parser(path):
 	'''Opens the template.htm and returns it as a bs4 Object'''
 
 	with open(path,'rb') as inf:
-		soup = BeautifulSoup(inf)
+		soup = BeautifulSoup(inf,'html.parser')
 	
 	return soup
 
@@ -370,7 +370,7 @@ def get_data(path,data):
 
 	data = find_space_group(raw,data) # find space group first
 	try:
-		data['crystal_system'] = space2cryst[data['space_group']][1] # now based on new and improved space2cryst
+		data['crystal_system'] = space2cryst[data['space_group'].lower()][1] # now based on new and improved space2cryst
 	except KeyError:
 		data['crystal_system'] = space2cryst[data['space_group'].lower()][1] # now based on new and improved space2cryst
 	data = find_volume(raw,data) # find volume of ??unit cell??
@@ -443,7 +443,10 @@ def make_new_column(template,outsoup,params):
 
 		if key == 'space_group' and val != 'Not found': # get formatted space group from "space groups.htm"
 			formatted = space2cryst[data['space_group'].lower()][0]
-			new_td.span.contents = formatted
+			formatted_str = ''.join([str(ele) for ele in formatted]) # doing this the hard way.
+			new_td_str = str(new_td)
+			new_td_str = new_td_str.replace('Blank',formatted_str)
+			new_td = BeautifulSoup(new_td_str, 'html.parser')
 		else:
 			new_td.span.string = val
 
@@ -469,19 +472,10 @@ space2cryst = resource.findAll('table')[-1]
 space2cryst = make_space2cryst_dict(space2cryst)
 
 for i,file in enumerate(input_files):
-	# if i < 2100: continue
 	data = {}
 	data['filename'] = file
-	print('%s/%s'%(i,len(input_files)))
-	print(file)
+	print('%s: (%s/%s)'%(file,i+1,len(input_files)))
 	data = get_data(file,data)
 	outsoup = make_new_column(template,outsoup,data)
-	# if i > 4:
-	# 	break
 	
 write_soup(outsoup,'done.htm')
-
-
-#### Find old space2cryst and add to resource.htm
-
-# finds axial instead of alpha. need to fix.
